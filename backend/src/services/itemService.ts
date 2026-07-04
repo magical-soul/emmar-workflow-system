@@ -1,6 +1,4 @@
-import { ItemRepository } from '../repositories/itemRepository';
-
-const itemRepository = new ItemRepository();
+import { itemRepository } from "../repositories/index";
 
 export class ItemService {
   async getTenantInventory(tenantId: string) {
