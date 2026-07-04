@@ -1,35 +1,8 @@
 import 'dotenv/config';
-
-// backend/prisma/seed.ts
-import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
-
-
-
-// const prisma = new PrismaClient();
-
-// const prisma = new PrismaClient({
-//   datasources: {
-//     db: {
-//       url: process.env.DATABASE_URL,
-//     },
-//   },
-// });
-
-
-
-// 1. Establish a native Node database connection pool using your local .env string
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-
-// 2. Wrap the active pool inside Prisma 7's required driver adapter
-const adapter = new PrismaPg(pool);
-
-// 3. ⚡ SUCCESS KEY: Instantiate the Client by explicitly passing the adapter framework!
-const prisma = new PrismaClient({ adapter });
+import { prisma } from '../src/utils/db'; 
 
 async function main() {
-  console.log('🌱 Initiating Emaar Enterprise Database Seeding Script...');
+  console.log('Initiating Emaar Enterprise Database Seeding Script...');
 
   // Purge any historical data safely to prevent unique constraint collisions
   await prisma.auditLog.deleteMany({});
@@ -41,14 +14,14 @@ async function main() {
   await prisma.tenantMembership.deleteMany({});
   await prisma.tenant.deleteMany({});
 
-  // 1. Create Three Core Emaar Enterprise Tenant Workspaces
+  // Create Three Core Emaar Enterprise Tenant Workspaces
   const properties = await prisma.tenant.create({ data: { name: 'Emaar Properties' } });
   const malls = await prisma.tenant.create({ data: { name: 'Emaar Malls' } });
   const entertainment = await prisma.tenant.create({ data: { name: 'Emaar Entertainment' } });
 
-  console.log(`🏢 Seeded Tenants: \n - ${properties.name} (${properties.id})\n - ${malls.name} (${malls.id})\n - ${entertainment.name} (${entertainment.id})`);
+  console.log(`Seeded Tenants: \n - ${properties.name} (${properties.id})\n - ${malls.name} (${malls.id})\n - ${entertainment.name} (${entertainment.id})`);
 
-  // 2. Map Cross-Tenant User Identities & Access Rights
+  // Map Cross-Tenant User Identities & Access Rights
   // Jyoti is an ADMIN for Emaar Properties, but an APPROVER for Emaar Malls!
   await prisma.tenantMembership.createMany({
     data: [
@@ -59,7 +32,7 @@ async function main() {
     ]
   });
 
-  // 3. Deploy an Immutable Workflow Blueprint for Emaar Properties
+  // Deploy an Immutable Workflow Blueprint for Emaar Properties
   const propertiesWorkflow = await prisma.workflow.create({
     data: {
       tenantId: properties.id,
@@ -68,7 +41,7 @@ async function main() {
     }
   });
 
-  // 4. Configure Blueprint States (The Board Columns)
+  // Configure Blueprint States (The Board Columns)
   const draftState = await prisma.workflowState.create({
     data: { workflowId: propertiesWorkflow.id, tenantId: properties.id, name: 'DRAFT' }
   });
@@ -79,7 +52,7 @@ async function main() {
     data: { workflowId: propertiesWorkflow.id, tenantId: properties.id, name: 'CONFIRMED' }
   });
 
-  // 5. Configure Blueprint Transitions (The Safety Arrows)
+  // Configure Blueprint Transitions (The Safety Arrows)
   // Transition A: DRAFT -> PENDING_APPROVAL (Automated progression, no signature required)
   await prisma.workflowTransition.create({
     data: {
@@ -103,7 +76,7 @@ async function main() {
     }
   });
 
-  // 6. Seed a Live Transactional Item for Alice under Emaar Properties
+  // Seed a Live Transactional Item for Alice under Emaar Properties
   await prisma.item.create({
     data: {
       tenantId: properties.id,
@@ -116,7 +89,7 @@ async function main() {
     }
   });
 
-  console.log('✅ Emaar Corporate Database Environment successfully seeded!');
+  console.log('Emaar Corporate Database Environment successfully seeded!');
 }
 
 main()

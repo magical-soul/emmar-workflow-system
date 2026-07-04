@@ -1,33 +1,11 @@
-// {
-//   "compilerOptions": {
-//     "target": "ES2022",
-//     "module": "CommonJS",
-//     "moduleResolution": "node",
-//     "lib": ["ES2022"],
-//     "outDir": "./dist",
-//     "rootDir": "./src",
-//     "strict": true,
-//     "noImplicitAny": true,
-//     "strictNullChecks": true,
-//     "esModuleInterop": true,
-//     "experimentalDecorators": true,
-//     "emitDecoratorMetadata": true,
-//     "skipLibCheck": true,
-//     "forceConsistentCasingInFileNames": true,
-//     "types": ["node"]
-//   },
-//   "include": ["src/**/*", "prisma/**/*.ts", "prisma.config.ts"]
-// }
-
-
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "lib": ["ES2022"],
+    "rootDir": "./src",
     "outDir": "./dist",
-    // 💡 REMOVED rootDir here to let files outside src/ compile seamlessly
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -38,9 +16,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": [
-    "src/**/*", 
-    "prisma/**/*.ts", 
-    "prisma.config.ts"
-  ]
+  "include": ["src/**/*"]
 }

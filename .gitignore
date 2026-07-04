@@ -1,4 +1,4 @@
-# Block all node_modules everywhere across our monorepo [JD]
+# Block all node_modules everywhere across our monorepo
 node_modules/
 **/node_modules/
 
