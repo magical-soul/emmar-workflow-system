@@ -1,0 +1,36 @@
+{
+  "info": {
+    "name": "Emaar Workflow System API Testing Box",
+    "schema": "https://getpostman.com"
+  },
+  "item": [
+    {
+      "name": "1. Fetch Scoped Tenant Inventory Items",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-tenant-id", "value": "PASTE_THE_EMAAR_PROPERTIES_UUID_HERE", "type": "text" },
+          { "key": "x-user-id", "value": "user-jyoti", "type": "text" }
+        ],
+        "url": { "raw": "http://localhost:8000/api/items", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["api", "items"] }
+      }
+    },
+    {
+      "name": "2. Trigger System Workflow Transition",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "x-tenant-id", "value": "PASTE_THE_EMAAR_PROPERTIES_UUID_HERE", "type": "text" },
+          { "key": "x-user-id", "value": "user-jyoti", "type": "text" },
+          { "key": "value", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"itemId\": \"PASTE_THE_ITEM_UUID_HERE\",\n  \"targetState\": \"PENDING_APPROVAL\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "http://localhost:8000/api/items/transition", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["api", "items", "transition"] }
+      }
+    }
+  ]
+}
