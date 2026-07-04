@@ -1,0 +1,116 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// The Company Workspace
+model Tenant {
+  id          String             @id @default(uuid())
+  name        String
+  createdAt   DateTime           @default(now())
+  memberships TenantMembership[]
+  workflows   Workflow[]
+  items       Item[]
+}
+
+// The Cross-Tenant Role Mapping Matrix
+model TenantMembership {
+  id       String @id @default(uuid())
+  userId   String
+  tenantId String
+  role     String // 'ADMIN' | 'APPROVER' | 'USER'
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId]) // Enforces exactly ONE role per user inside a single tenant
+}
+
+// The Immutable Workflow Template
+model Workflow {
+  id          String               @id @default(uuid())
+  tenantId    String
+  title       String
+  version     Int                  @default(1)
+  isActive    Boolean              @default(true)
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  states      WorkflowState[]
+  transitions WorkflowTransition[]
+  items       Item[]
+
+  @@unique([tenantId, title, version]) // Versioning allows editing maps without breaking history
+}
+
+// 🔲 The Workflow Boxes/Stages
+model WorkflowState {
+  id         String   @id @default(uuid())
+  workflowId String
+  tenantId   String
+  name       String   // e.g., 'DRAFT', 'PENDING_APPROVAL', 'APPROVED'
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, name])
+}
+
+// ➡️ The Workflow Linking Arrows
+model WorkflowTransition {
+  id               String            @id @default(uuid())
+  workflowId       String
+  tenantId         String
+  fromStateName    String
+  toStateName      String
+  requiresApproval Boolean           @default(false)
+  approvalStrategy String            @default("SINGLE") // 'SINGLE' | 'MULTIPLE' | 'QUORUM'
+  workflow         Workflow          @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  requests         ApprovalRequest[]
+}
+
+// 📋 The Transactional Business Asset Tracker
+model Item {
+  id           String            @id @default(uuid())
+  tenantId     String
+  workflowId   String
+  currentState String            @default("DRAFT")
+  title        String
+  createdBy    String
+  version      Int               @default(1) // 💡 Essential for Optimistic Concurrency Control (OCC)
+  slaHours     Int               @default(48)
+  escapedAt    DateTime?         // Tracks deadline breach timers
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workflow     Workflow          @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  requests     ApprovalRequest[]
+}
+
+// 🖋️ The Verification Signature Queue
+model ApprovalRequest {
+  id                 String             @id @default(uuid())
+  itemId             String
+  transitionId       String
+  tenantId           String
+  assignedApproverId String
+  delegatedToId      String?
+  status             String             @default("PENDING") // 'PENDING' | 'APPROVED' | 'REJECTED'
+  item               Item               @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  transition         WorkflowTransition @relation(fields: [transitionId], references: [id], onDelete: Cascade)
+}
+
+// ⏳ The Temporal Vacation Authority Delegation Tracker
+model ApprovalDelegations {
+  id         String   @id @default(uuid())
+  tenantId   String
+  fromUserId String
+  toUserId   String
+  expiresAt  DateTime
+}
+
+// 📜 The Permanent Immutable History Ledger
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  itemId      String?
+  action      String   // e.g., 'TRANSITION_TRIGGERED', 'APPROVAL_DELEGATED'
+  performedBy String
+  payload     String   // Stores a serialized JSON string snapshot of state diffs
+  createdAt   DateTime @default(now())
+}

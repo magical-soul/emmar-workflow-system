@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # 💾 Database Service Layer
+  postgres_db:
+    image: postgres:16-alpine
+    container_name: emaar-postgres-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: emaar_workflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - emaar_network
+
+  # 📡 Backend Express API Service Layer
+  # backend_api:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: emaar-backend-api
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     - DATABASE_URL=postgresql://postgres:postgres@postgres_db:5432/emaar_workflow?schema=public
+  #     - PORT=8000
+  #   depends_on:
+  #     - postgres_db
+  #   networks:
+  #     - emaar_network
+
+volumes:
+  postgres_data: # Ensures database data persists safely across container restarts!
+
+networks:
+  emaar_network:
+    driver: bridge
