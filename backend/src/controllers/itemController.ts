@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../utils/context";
-import { itemService, workflowService } from "../services/index";
+import { workflowService } from "../services/index";
+import { itemRepository } from "../repositories";
 
 export async function getTenantItems(req: AuthenticatedRequest, res: Response) {
   try {
@@ -11,12 +12,21 @@ export async function getTenantItems(req: AuthenticatedRequest, res: Response) {
         .json({ error: "Uninitialized validation context exception." });
     }
 
-    const items = await itemService.getTenantInventory(context.tenantId);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const stateFilter = req.query.state as string || undefined;
+
+    const result = await itemRepository.findPaginatedTenantItems(
+      context.tenantId,
+      page,
+      limit,
+      stateFilter
+    );
 
     return res.json({
       activeWorkspace: context.tenantId,
       userRoleInWorkspace: context.role,
-      data: items,
+      ...result
     });
   } catch (error) {
     console.error("Controller endpoint tracking failure:", error);

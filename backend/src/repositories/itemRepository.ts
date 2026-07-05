@@ -40,6 +40,51 @@ export class ItemRepository {
     return updateResult.count; // Returns 1 if successful, 0 if another user modified it first!
   }
 
+  async findPaginatedTenantItems(tenantId: string, page: number = 1, limit: number = 10, stateFilter?: string) {
+    const skip = (page - 1) * limit;
+    
+    const whereCondition: any = { tenantId };
+    if (stateFilter) {
+      whereCondition.currentState = stateFilter;
+    }
+
+    const [items, totalRecordsCount] = await prisma.$transaction([
+      prisma.item.findMany({
+        where: whereCondition,
+        skip,
+        take: limit,
+        orderBy: { id: 'desc' }, 
+        include: {
+          workflow: { select: { title: true, version: true } }
+        }
+      }),
+      prisma.item.count({ where: whereCondition })
+    ]);
+
+    return {
+      items,
+      meta: {
+        totalRecordsCount,
+        currentPage: page,
+        totalPagesCount: Math.ceil(totalRecordsCount / limit),
+        limit
+      }
+    };
+  }
+
+  // For tracking multi-signature strategy counts
+  async countResolvedSignatures(itemId: string, transitionId: string): Promise<{ approved: number; totalCount: number }> {
+    const requests = await prisma.approvalRequest.findMany({
+      where: { itemId, transitionId }
+    });
+
+    const approved = requests.filter(r => r.status === 'APPROVED').length;
+    return {
+      approved,
+      totalCount: requests.length
+    };
+  }
+
   async createApprovalRequest(
     itemId: string,
     transitionId: string,

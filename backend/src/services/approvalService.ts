@@ -18,7 +18,7 @@ export class ApprovalService {
       );
     }
 
-    // THE DUPLICATE SIGNATURE GUARD: Prevent double processing or conflicting updates
+    // Prevent double processing or conflicting updates
     if (request.status !== "PENDING") {
       throw new Error(
         `Conflict. This approval ticket has already been processed and marked as: ${request.status}`,
@@ -46,17 +46,59 @@ export class ApprovalService {
       );
     }
 
+    // ATOMIC HIGH-CONCURRENCY WRITE LOCK
     try {
-      // Execute the atomic database mutation query safely  
+      // Execute the atomic database mutation query safely
       await itemRepository.updateApprovalStatus(request.id, action);
     } catch (dbError) {
-      // If the query fails, it means another thread updated the row a millisecond ago!  
+      // If the query fails, it means another thread updated the row a millisecond ago!
       throw new Error(
         "Concurrency Conflict. This approval token was already resolved by another manager thread a millisecond ago. Please refresh data.",
       );
     }
 
-    if (action === "APPROVED") {
+    // IF THE MANAGER MARKS IT REJECTED, TERMINATE PROCESS IMMEDIATELY
+    if (action === "REJECTED") {
+      await auditRepository.createLog(
+        tenantId,
+        request.itemId,
+        "APPROVAL_REQUEST_REJECTED",
+        currentUserId,
+        {
+          requestId: request.id,
+          action,
+        },
+      );
+
+      return {
+        status: "RESOLVED",
+        action,
+        currentItemState: request.item.currentState,
+        strategyUnlocked: false,
+      };
+    }
+
+    const strategy = request.transition.approvalStrategy; // 'SINGLE' | 'MULTIPLE' | 'QUORUM'
+    const counts = await itemRepository.countResolvedSignatures(
+      request.itemId,
+      request.transitionId,
+    );
+
+    let strategySatisfied = false;
+
+    if (strategy === "SINGLE" || !strategy) {
+      strategySatisfied = true; // A single manager signature unlocks the step path!
+    } else if (strategy === "MULTIPLE") {
+      // Unanimous Rule: All generated tickets for this workflow step must read APPROVED!
+      strategySatisfied = counts.approved === counts.totalCount;
+    } else if (strategy === "QUORUM") {
+      // Majority Rule: Total valid approved signatures must exceed 50% of total board seats!
+      const requiredQuorumCount = Math.floor(counts.totalCount / 2) + 1;
+      strategySatisfied = counts.approved >= requiredQuorumCount;
+    }
+
+    // IF THE STRATEGY CRITERIA PATTERNS ARE FULLY MET, UPGRADE THE PARENT ITEM (OCC)
+    if (strategySatisfied) {
       const targetState = request.transition.toStateName;
 
       const affectedRows = await itemRepository.updateStateWithOCC(
@@ -80,28 +122,38 @@ export class ApprovalService {
           action,
           finalItemState: targetState,
           assignedApprover: request.assignedApproverId,
+          appliedStrategy: strategy,
         },
       );
 
-      return { status: "RESOLVED", action, currentItemState: targetState };
+      return {
+        status: "RESOLVED",
+        action,
+        currentItemState: targetState,
+        strategyUnlocked: true,
+      };
     }
 
+    // STILL WAITING: If more signatures are needed under MULTIPLE/QUORUM, freeze the item state!
     await auditRepository.createLog(
       tenantId,
       request.item.id,
-      "APPROVAL_REQUEST_REJECTED",
+      "APPROVAL_SIGNATURE_REGISTERED_WAITING",
       currentUserId,
       {
         requestId: request.id,
         action,
+        approvedCount: counts.approved,
+        totalRequiredCount: counts.totalCount,
+        appliedStrategy: strategy,
       },
     );
 
-    // If rejected, keep the item locked in its current pending status or move back to draft rules
     return {
-      status: "RESOLVED",
+      status: "WAITING_FOR_ADDITIONAL_SIGNATURES",
       action,
       currentItemState: request.item.currentState,
+      strategyUnlocked: false,
     };
   }
 }
