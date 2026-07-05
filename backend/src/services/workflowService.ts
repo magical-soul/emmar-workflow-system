@@ -30,6 +30,7 @@ export class WorkflowService {
       );
     }
 
+    // THE APPROVAL ENGINE INTERCEPTOR
     if (matchTransition.requiresApproval) {
       const activeApproverMembership = await prisma.tenantMembership.findFirst({
         where: {
@@ -44,10 +45,9 @@ export class WorkflowService {
         );
       }
 
-      // Extract the manager's userId dynamically from the database record cell
       const targetApproverId = activeApproverMembership.userId;
 
-      // Create a pending ticket entry in the database queue
+      // Spawn the pending signature task ticket inside your database table queue
       await itemRepository.createApprovalRequest(
         item.id,
         matchTransition.id,
@@ -55,13 +55,15 @@ export class WorkflowService {
         targetApproverId,
       );
 
-      // Mutate the parent asset state smoothly into the requested tracking column
+      const finalHoldState =
+        item.currentState === "DRAFT" ? "PENDING_APPROVAL" : item.currentState;
       await itemRepository.updateStateWithOCC(
         item.id,
         item.version,
-        requestedState,
+        finalHoldState,
       );
 
+      // Log the hold event in the immutable ledger
       await auditRepository.createLog(
         tenantId,
         item.id,
@@ -69,26 +71,21 @@ export class WorkflowService {
         userId,
         {
           previousState: item.currentState,
-          newState: requestedState,
+          requestedState: requestedState,
+          holdState: finalHoldState,
           requiredApprover: targetApproverId,
         },
       );
 
       return {
         status: "PENDING_APPROVAL_HOLD",
-        message: `Transition captured. State shifted to '${requestedState}'. A signature request ticket has been dispatched to authorized manager: ${targetApproverId}`,
+        message: `Action Blocked. Transition to state '${requestedState}' requires an authorized manager signature verification. A ticket has been dispatched to: ${targetApproverId}`,
         itemId: item.id,
+        currentState: finalHoldState,
       };
     }
 
-    // Halts progression if a manager signature is required
-    if (matchTransition.requiresApproval) {
-      throw new Error(
-        `Action Blocked. Transition to state '${requestedState}' requires an authorized manager signature verification.`,
-      );
-    }
-
-    // EXECUTE DATA TRANSACTION WITH OCC CONCURRENCY LOCKS
+    // EXECUTE DIRECT progression DATA TRANSACTION (For un-locked paths like DRAFT -> PENDING_APPROVAL)
     const affectedRows = await itemRepository.updateStateWithOCC(
       item.id,
       item.version,
@@ -101,6 +98,7 @@ export class WorkflowService {
       );
     }
 
+    // Log standard transition completion success
     await auditRepository.createLog(
       tenantId,
       item.id,

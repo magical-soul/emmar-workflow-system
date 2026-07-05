@@ -23,10 +23,10 @@ export async function getItemAuditTimeline(
         });
     }
 
-    // Fetch history, securely wrapping the transaction inside our active tenantId filter! [JD]
+    // Fetch history, securely wrapping the transaction inside our active tenantId filter!  
     const logs = await auditRepository.findHistoryByItem(context.tenantId, itemId);
 
-    // Parse serialized string blobs back into native JSON objects before dispatching back to React [JD]
+    // Parse serialized string blobs back into native JSON objects before dispatching back to React  
     const parsedLogs = logs.map((log) => ({
       ...log,
       payload: JSON.parse(log.payload),

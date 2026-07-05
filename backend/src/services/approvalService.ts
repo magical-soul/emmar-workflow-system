@@ -46,8 +46,15 @@ export class ApprovalService {
       );
     }
 
-    // PERSIST SIGNATURE RESOLUTION STATUS
-    await itemRepository.updateApprovalStatus(request.id, action);
+    try {
+      // Execute the atomic database mutation query safely  
+      await itemRepository.updateApprovalStatus(request.id, action);
+    } catch (dbError) {
+      // If the query fails, it means another thread updated the row a millisecond ago!  
+      throw new Error(
+        "Concurrency Conflict. This approval token was already resolved by another manager thread a millisecond ago. Please refresh data.",
+      );
+    }
 
     if (action === "APPROVED") {
       const targetState = request.transition.toStateName;
