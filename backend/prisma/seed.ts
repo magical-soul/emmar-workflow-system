@@ -76,18 +76,17 @@ async function main() {
     }
   });
 
-  // Seed a Live Transactional Item for Alice under Emaar Properties
-  await prisma.item.create({
-    data: {
-      tenantId: properties.id,
-      workflowId: propertiesWorkflow.id,
-      currentState: 'DRAFT',
-      title: 'Burj Khalifa Penthouse 102 Reservation Order',
-      createdBy: 'user-alice',
-      version: 1,
-      slaHours: 48
-    }
-  });
+await prisma.item.create({
+  data: {
+    tenantId: properties.id,
+    workflowId: propertiesWorkflow.id,
+    currentState: 'PENDING_APPROVAL', // Start it waiting for approval 
+    title: 'Burj Khalifa Penthouse 102 Reservation Order',
+    createdBy: 'user-alice',
+    version: 1,
+    slaHours: 48, // Allowed window is 48 hours 
+  }
+});
 
   console.log('Emaar Corporate Database Environment successfully seeded!');
 }

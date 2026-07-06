@@ -29,7 +29,7 @@ export class ItemRepository {
     const updateResult = await prisma.item.updateMany({
       where: {
         id,
-        version: currentVersion, // The record version number MUST match what we read in memory!
+        version: currentVersion, // The record version number must match what we read in memory!
       },
       data: {
         currentState: targetState,
@@ -40,25 +40,43 @@ export class ItemRepository {
     return updateResult.count; // Returns 1 if successful, 0 if another user modified it first!
   }
 
-  async findPaginatedTenantItems(tenantId: string, page: number = 1, limit: number = 10, stateFilter?: string) {
+  async findPaginatedTenantItems(
+    tenantId: string,
+    page: number = 1,
+    limit: number = 10,
+    stateFilter?: string,
+  ) {
     const skip = (page - 1) * limit;
-    
+
     const whereCondition: any = { tenantId };
     if (stateFilter) {
       whereCondition.currentState = stateFilter;
     }
 
-    const [items, totalRecordsCount] = await prisma.$transaction([
+    const [
+      items,
+      totalRecordsCount,
+      draftCount,
+      pendingCount,
+      confirmedCount,
+      escalatedCount,
+    ] = await prisma.$transaction([
       prisma.item.findMany({
         where: whereCondition,
         skip,
         take: limit,
-        orderBy: { id: 'desc' }, 
+        orderBy: { id: "desc" },
         include: {
-          workflow: { select: { title: true, version: true } }
-        }
+          workflow: { select: { title: true, version: true } },
+        },
       }),
-      prisma.item.count({ where: whereCondition })
+      prisma.item.count({ where: whereCondition }),
+      prisma.item.count({ where: { tenantId, currentState: "DRAFT" } }),
+      prisma.item.count({
+        where: { tenantId, currentState: "PENDING_APPROVAL" },
+      }),
+      prisma.item.count({ where: { tenantId, currentState: "CONFIRMED" } }),
+      prisma.item.count({ where: { tenantId, currentState: "ESCALATED" } }),
     ]);
 
     return {
@@ -67,21 +85,30 @@ export class ItemRepository {
         totalRecordsCount,
         currentPage: page,
         totalPagesCount: Math.ceil(totalRecordsCount / limit),
-        limit
-      }
+        limit,
+        globalCounts: {
+          DRAFT: draftCount,
+          PENDING_APPROVAL: pendingCount,
+          CONFIRMED: confirmedCount,
+          ESCALATED: escalatedCount,
+        },
+      },
     };
   }
 
   // For tracking multi-signature strategy counts
-  async countResolvedSignatures(itemId: string, transitionId: string): Promise<{ approved: number; totalCount: number }> {
+  async countResolvedSignatures(
+    itemId: string,
+    transitionId: string,
+  ): Promise<{ approved: number; totalCount: number }> {
     const requests = await prisma.approvalRequest.findMany({
-      where: { itemId, transitionId }
+      where: { itemId, transitionId },
     });
 
-    const approved = requests.filter(r => r.status === 'APPROVED').length;
+    const approved = requests.filter((r) => r.status === "APPROVED").length;
     return {
       approved,
-      totalCount: requests.length
+      totalCount: requests.length,
     };
   }
 
@@ -114,7 +141,7 @@ export class ItemRepository {
         fromUserId,
         toUserId,
         expiresAt: {
-          gt: new Date(), // Must be active right now!
+          gt: new Date(),
         },
       },
     });
@@ -131,7 +158,6 @@ export class ItemRepository {
     });
   }
 
-  // ATOMIC DOUBLE-SIGN BLOCK: Update request status safely
   async updateApprovalStatus(id: string, status: string) {
     return await prisma.approvalRequest.update({
       where: { id, status: "PENDING" },
@@ -139,71 +165,18 @@ export class ItemRepository {
     });
   }
 
-  async escalateOverdueItems(): Promise<number> {
-    // 1. Locate all items waiting for approval that have breached their SLA tracking windows
-    const itemsToEscalate = await prisma.item.findMany({
-      where: {
-        currentState: "PENDING_APPROVAL",
-      },
-    });
-
-    if (itemsToEscalate.length === 0) return 0;
-
-    let totalEscalatedCount = 0;
-
-    // 2. ⚡ DYNAMIC ESCALATION SWEEP: Process items based on their organizational boundaries
-    for (const item of itemsToEscalate) {
-      // Dynamically look up the authorized ADMIN for this specific item's tenant workspace!  
-      const tenantAdminMembership = await prisma.tenantMembership.findFirst({
-        where: {
-          tenantId: item.tenantId,
-          role: "ADMIN", // Filters out regular workers, pulling the true workspace manager  
-        },
-      });
-
-      // Fallback indicator if a tenant workspace lacks an admin profile configuration
-      const escalatedApproverTarget = tenantAdminMembership
-        ? tenantAdminMembership.userId
-        : "SYSTEM_FALLBACK_ADMIN";
-
-      // 3. Re-route the specific pending approval request to the dynamically resolved Admin  
-      await prisma.approvalRequest.updateMany({
-        where: {
-          itemId: item.id,
-          status: "PENDING",
-        },
-        data: {
-          assignedApproverId: escalatedApproverTarget, // Authority shifts up the organizational chart dynamically!
-        },
-      });
-
-      // 4. Update the parent asset item state row atomically using OCC version checks  
-      const updateResult = await prisma.item.updateMany({
-        where: {
-          id: item.id,
-          version: item.version,
-        },
-        data: {
-          currentState: "ESCALATED",
-          version: item.version + 1,
-        },
-      });
-
-      totalEscalatedCount += updateResult.count;
-    }
-
-    return totalEscalatedCount; // Returns total records successfully escalated in this sweep cycle
-  }
-
-
-
   // Atomic creation of a complete workflow blueprint with its columns and transition arrows
   async createWorkflowBlueprint(
-    tenantId: string, 
-    title: string, 
-    version: number, 
-    states: string[], 
-    transitions: Array<{ from: string; to: string; requiresApproval: boolean; approvalStrategy?: string }>
+    tenantId: string,
+    title: string,
+    version: number,
+    states: string[],
+    transitions: Array<{
+      from: string;
+      to: string;
+      requiresApproval: boolean;
+      approvalStrategy?: string;
+    }>,
   ) {
     // Execute inside an isolated database transaction to guarantee atomicity
     return await prisma.$transaction(async (tx) => {
@@ -212,26 +185,26 @@ export class ItemRepository {
         data: {
           tenantId,
           title,
-          version
-        }
+          version,
+        },
       });
 
-      // Map and batch-insert all columns (States) for this board  
+      // Map and batch-insert all columns (States) for this board
       const stateRecords = await Promise.all(
-        states.map(stateName => 
+        states.map((stateName) =>
           tx.workflowState.create({
             data: {
               workflowId: workflow.id,
               tenantId,
-              name: stateName
-            }
-          })
-        )
+              name: stateName,
+            },
+          }),
+        ),
       );
 
-      // Map and batch-insert all valid transition arrows connecting the columns  
+      // Map and batch-insert all valid transition arrows connecting the columns
       await Promise.all(
-        transitions.map(t => 
+        transitions.map((t) =>
           tx.workflowTransition.create({
             data: {
               workflowId: workflow.id,
@@ -239,14 +212,109 @@ export class ItemRepository {
               fromStateName: t.from,
               toStateName: t.to,
               requiresApproval: t.requiresApproval,
-              approvalStrategy: t.approvalStrategy || 'SINGLE'
-            }
-          })
-        )
+              approvalStrategy: t.approvalStrategy || "SINGLE",
+            },
+          }),
+        ),
       );
 
       return workflow;
     });
   }
 
+  async findPendingApprovalRequests(tenantId: string, approverId: string) {
+    // Locate any active managers who have delegated their signature powers to this user
+    const activeDelegationsToUser = await prisma.approvalDelegations.findMany({
+      where: {
+        tenantId,
+        toUserId: approverId,
+        expiresAt: { gt: new Date() }, // Checks that the delegation window hasn't expired yet
+      },
+    });
+
+    // Extract the user IDs of the managers who handed off authority
+    const delegatorUserIds = activeDelegationsToUser.map((d) => d.fromUserId);
+
+    // Query requests where the ticket is assigned directly to this user OR assigned to any of their delegators
+    return await prisma.approvalRequest.findMany({
+      where: {
+        tenantId,
+        status: "PENDING",
+        OR: [
+          { assignedApproverId: approverId },
+          { assignedApproverId: { in: delegatorUserIds } },
+        ],
+      },
+      include: {
+        item: { select: { title: true, currentState: true } },
+      },
+    });
+  }
+
+  async createNewItem(
+    tenantId: string,
+    title: string,
+    createdBy: string,
+    slaHours: number,
+  ) {
+    // Dynamically look up the active workflow configuration for this tenant
+    const activeWorkflow = await prisma.workflow.findFirst({
+      where: { tenantId },
+      orderBy: { version: "desc" },
+    });
+
+    if (!activeWorkflow) {
+      throw new Error(
+        "System Exception: No active workflow blueprints deployed inside this tenant workspace.",
+      );
+    }
+
+    return await prisma.item.create({
+      data: {
+        tenantId,
+        workflowId: activeWorkflow.id,
+        title,
+        createdBy,
+        currentState: "DRAFT",
+        version: 1,
+        slaHours,
+      },
+    });
+  }
+
+  async createApprovalDelegation(
+    tenantId: string,
+    fromUserId: string,
+    toUserId: string,
+    durationDays: number,
+  ) {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + durationDays);
+
+    return await prisma.approvalDelegations.create({
+      data: {
+        tenantId,
+        fromUserId,
+        toUserId,
+        expiresAt,
+      },
+    });
+  }
+
+  async hasUserAlreadyVoted(
+    itemId: string,
+    transitionId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const existingVote = await prisma.approvalRequest.findFirst({
+      where: {
+        itemId,
+        transitionId,
+        assignedApproverId: userId,
+        status: { in: ["APPROVED", "REJECTED"] },
+      },
+    });
+
+    return !!existingVote; 
+  }
 }

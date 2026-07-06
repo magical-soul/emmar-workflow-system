@@ -4,7 +4,7 @@ import { adminWorkflowService } from '../services/index';
 
 export async function createNewTenantWorkflow(req: AuthenticatedRequest, res: Response) {
   try {
-    const context = req.tenantContext!; // Assured by tenantGuard and adminGuard  
+    const context = req.tenantContext!;
     const { title, states, transitions } = req.body;
 
     // Strict input shape validations  

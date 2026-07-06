@@ -25,7 +25,7 @@ export class ApprovalService {
       );
     }
 
-    // THE AUTHORITY RESOLUTION MATRIX (Checking Direct Assignment or Delegation)
+    // Checking Direct Assignment or Delegation
     let isAuthorized = request.assignedApproverId === currentUserId;
 
     if (!isAuthorized) {
@@ -36,7 +36,7 @@ export class ApprovalService {
         currentUserId,
       );
       if (activeDelegation) {
-        isAuthorized = true; // Authority granted via vacation hand-off!
+        isAuthorized = true;
       }
     }
 
@@ -46,18 +46,34 @@ export class ApprovalService {
       );
     }
 
+    if (request.item.createdBy === currentUserId) {
+      throw new Error(
+        "Compliance Block: Segregation of Duties enforced. You are the original creator of this item and cannot legally authorize your own approval signature token.",
+      );
+    }
+
+    const alreadyVoted = await itemRepository.hasUserAlreadyVoted(
+      request.itemId,
+      request.transitionId,
+      currentUserId,
+    );
+
+    if (alreadyVoted) {
+      throw new Error(
+        "Compliance Block: Double-voting restriction enforced. Your signature profile has already authorized a resolution on this workflow step.",
+      );
+    }
     // ATOMIC HIGH-CONCURRENCY WRITE LOCK
     try {
-      // Execute the atomic database mutation query safely
       await itemRepository.updateApprovalStatus(request.id, action);
     } catch (dbError) {
-      // If the query fails, it means another thread updated the row a millisecond ago!
+      // If the query fails, it means another thread updated the row a millisecond ago
       throw new Error(
         "Concurrency Conflict. This approval token was already resolved by another manager thread a millisecond ago. Please refresh data.",
       );
     }
 
-    // IF THE MANAGER MARKS IT REJECTED, TERMINATE PROCESS IMMEDIATELY
+    // If rejected, terminate process immediately 
     if (action === "REJECTED") {
       await auditRepository.createLog(
         tenantId,
@@ -87,9 +103,9 @@ export class ApprovalService {
     let strategySatisfied = false;
 
     if (strategy === "SINGLE" || !strategy) {
-      strategySatisfied = true; // A single manager signature unlocks the step path!
+      strategySatisfied = true;
     } else if (strategy === "MULTIPLE") {
-      // Unanimous Rule: All generated tickets for this workflow step must read APPROVED!
+      // All generated tickets for this workflow step must read APPROVED!
       strategySatisfied = counts.approved === counts.totalCount;
     } else if (strategy === "QUORUM") {
       // Majority Rule: Total valid approved signatures must exceed 50% of total board seats!
@@ -97,7 +113,6 @@ export class ApprovalService {
       strategySatisfied = counts.approved >= requiredQuorumCount;
     }
 
-    // IF THE STRATEGY CRITERIA PATTERNS ARE FULLY MET, UPGRADE THE PARENT ITEM (OCC)
     if (strategySatisfied) {
       const targetState = request.transition.toStateName;
 
@@ -134,7 +149,7 @@ export class ApprovalService {
       };
     }
 
-    // STILL WAITING: If more signatures are needed under MULTIPLE/QUORUM, freeze the item state!
+    // If more signatures are needed under MULTIPLE/QUORUM, freeze the item state!
     await auditRepository.createLog(
       tenantId,
       request.item.id,

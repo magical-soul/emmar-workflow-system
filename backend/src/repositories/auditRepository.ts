@@ -15,7 +15,7 @@ export class AuditRepository {
         itemId,
         action,
         performedBy,
-        payload: JSON.stringify(payload), // Serialize the data snapshot cleanly into a JSON text column
+        payload: JSON.stringify(payload),
       },
     });
   }
@@ -24,7 +24,7 @@ export class AuditRepository {
   async findHistoryByItem(tenantId: string, itemId: string) {
     return await prisma.auditLog.findMany({
       where: { tenantId, itemId },
-      orderBy: { createdAt: "desc" }, // Always show the most recent event at the absolute top
+      orderBy: { createdAt: "desc" },
     });
   }
 }

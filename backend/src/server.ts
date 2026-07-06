@@ -3,11 +3,12 @@ import cors from "cors";
 import { tenantGuard } from "./middlewares/tenantGuard";
 import { adminGuard } from "./middlewares/adminGuard";
 import {
+  createTenantItem,
   getTenantItems,
   triggerItemTransition,
 } from "./controllers/itemController";
 import { SlaDaemon } from "./services/slaDaemon";
-import { processApprovalAction } from "./controllers/approvalController";
+import { createTenantDelegation, getPendingUserApprovals, processApprovalAction } from "./controllers/approvalController";
 import { getItemAuditTimeline } from "./controllers/auditController";
 import { createNewTenantWorkflow } from "./controllers/adminWorkflowController";
 import { validateBody, createWorkflowSchema, transitionItemSchema, resolveApprovalSchema } from './middlewares/validate';
@@ -27,7 +28,9 @@ app.get("/api/items", tenantGuard, getTenantItems);
 app.post('/api/items/transition', tenantGuard, validateBody(transitionItemSchema), triggerItemTransition);
 app.post('/api/approvals/resolve', tenantGuard, validateBody(resolveApprovalSchema), processApprovalAction);
 app.post('/api/workflows/configure', tenantGuard, adminGuard, validateBody(createWorkflowSchema), createNewTenantWorkflow);
-
+app.get('/api/approvals/pending', tenantGuard, getPendingUserApprovals);
+app.post('/api/items', tenantGuard, createTenantItem);
+app.post('/api/approvals/delegate', tenantGuard, createTenantDelegation);
 app.get('/api/audit-logs/:itemId', tenantGuard, getItemAuditTimeline);
 
 // adminGuard-protected route for workflow configuration changes

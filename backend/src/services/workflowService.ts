@@ -12,7 +12,7 @@ export class WorkflowService {
     const item = await itemRepository.findByIdAndTenant(itemId, tenantId);
     if (!item) {
       throw new Error(
-        "Target resource item not found or sits outside of active tenant boundaries.",
+        "Target resource item not found",
       );
     }
 
@@ -47,7 +47,7 @@ export class WorkflowService {
 
       const targetApproverId = activeApproverMembership.userId;
 
-      // Spawn the pending signature task ticket inside your database table queue
+      // Spawn the pending signature task ticket inside the database table queue
       await itemRepository.createApprovalRequest(
         item.id,
         matchTransition.id,

@@ -27,3 +27,21 @@ export interface AuditLog {
   payload: any;
   createdAt: string;
 }
+
+export interface PaginatedItemsResponse {
+  activeWorkspace: string;
+  userRoleInWorkspace: string;
+  items: Item[];
+  meta: {
+    totalRecordsCount: number;
+    currentPage: number;
+    totalPagesCount: number;
+    limit: number;
+    globalCounts: {
+      DRAFT: number;
+      PENDING_APPROVAL: number;
+      CONFIRMED: number;
+      ESCALATED: number;
+    };
+  };
+}

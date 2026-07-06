@@ -58,7 +58,7 @@ export async function triggerItemTransition(
         });
     }
 
-    // Dispatch parameters safely down to our pure business service layer
+    // Dispatch parameters safely down to our pure service layer
     const result = await workflowService.processTransition(
       itemId,
       context.tenantId,
@@ -77,5 +77,28 @@ export async function triggerItemTransition(
       .json({
         error: error.message || "Workflow transition operation failed.",
       });
+  }
+}
+
+
+export async function createTenantItem(req: AuthenticatedRequest, res: Response) {
+  try {
+    const context = req.tenantContext!;
+    const { title, slaHours } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ error: 'Validation Failure: Item title field is mandatory.' });
+    }
+
+    const newItem = await itemRepository.createNewItem(
+      context.tenantId,
+      title,
+      context.userId,
+      parseInt(slaHours) || 48
+    );
+
+    return res.json({ success: true, message: 'Asset record instantiated successfully.', data: newItem });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to instantiate new tracking asset.' });
   }
 }

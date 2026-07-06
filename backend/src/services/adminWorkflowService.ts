@@ -9,6 +9,18 @@ export class AdminWorkflowService {
     transitions: Array<{ from: string; to: string; requiresApproval: boolean; approvalStrategy?: string }>,
     userId: string
   ) {
+
+    for (const transition of transitions) {
+      const sourceStateExists = states.includes(transition.from);
+      const targetStateExists = states.includes(transition.to);
+
+      if (!sourceStateExists || !targetStateExists) {
+        throw new Error(
+          `Structural Matrix Rejection: Invalid transition configuration arrow mapped from [${transition.from}] to [${transition.to}]. Specified states must exist within the defined workspace array.`
+        );
+      }
+    }
+
     // Fetch the absolute latest active version of this workflow blueprint layout
     const latestWorkflow = await prisma.workflow.findFirst({
       where: { tenantId, title },
@@ -21,12 +33,12 @@ export class AdminWorkflowService {
 
     // Deep compare if a workflow layout already exists
     if (latestWorkflow) {
-      // Check A: Do the state arrays match perfectly in length and values?
+      // Do the state arrays match perfectly in length and values?
       const existingStates = latestWorkflow.states.map(s => s.name).sort();
       const incomingStates = [...states].sort();
       const statesMatch = JSON.stringify(existingStates) === JSON.stringify(incomingStates);
 
-      // Check B: Do the transition arrows match perfectly?
+      // Do the transition arrows match perfectly?
       const existingTransitions = latestWorkflow.transitions.map(t => 
         `${t.fromStateName}->${t.toStateName}-${t.requiresApproval}`
       ).sort();
