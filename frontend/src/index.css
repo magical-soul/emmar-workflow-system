@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+
+@layer base {
+  /* Forces all button elements to render the responsive hand cursor natively! */
+  button, 
+  select,
+  input[type="submit"] {
+    cursor: pointer;
+  }
+  
+  button:disabled,
+  select:disabled {
+    cursor: not-allowed;
+  }
+}

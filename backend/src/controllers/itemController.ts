@@ -84,7 +84,7 @@ export async function triggerItemTransition(
 export async function createTenantItem(req: AuthenticatedRequest, res: Response) {
   try {
     const context = req.tenantContext!;
-    const { title, slaHours } = req.body;
+    const { title, slaHours, workflowTitle } = req.body;
 
     if (!title) {
       return res.status(400).json({ error: 'Validation Failure: Item title field is mandatory.' });
@@ -94,7 +94,8 @@ export async function createTenantItem(req: AuthenticatedRequest, res: Response)
       context.tenantId,
       title,
       context.userId,
-      parseInt(slaHours) || 48
+      parseInt(slaHours) || 48,
+      workflowTitle
     );
 
     return res.json({ success: true, message: 'Asset record instantiated successfully.', data: newItem });

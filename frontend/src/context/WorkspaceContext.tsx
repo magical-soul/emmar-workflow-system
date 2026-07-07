@@ -11,9 +11,9 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
 
 // Pre-seeded Mappings matching our Database relational baseline seed configurations
 export const SEEDED_TENANTS = [
-  { id: '7bc3b388-af30-4042-abba-b7c87708a359', name: 'Emaar Properties' },
-  { id: '568ba0bf-51fd-420d-8bcf-a40de14111f3', name: 'Emaar Malls' },
-  { id: '82b79872-0173-41bb-8c44-c0bb8b43221c', name: 'Emaar Entertainment' }
+  { id: '4186f5eb-ffc4-482d-b57b-98200fa2e5b4', name: 'Emaar Properties' },
+  { id: '9dafb475-bb40-45fc-8a04-6d80e0d7624f', name: 'Emaar Malls' },
+  { id: 'fba217ae-6d70-4d38-aa42-b1548da6377a', name: 'Emaar Entertainment' }
 ];
 
 export const SEEDED_USERS = [

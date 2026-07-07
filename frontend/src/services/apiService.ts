@@ -3,7 +3,6 @@ import { apiRequest } from "../utils/api";
 
 
 export const apiService = {
-  // Optimized Paginated Fetch
   async fetchItems(
     tenantId: string,
     userId: string,
@@ -74,13 +73,14 @@ export const apiService = {
     tenantId: string,
     userId: string,
     title: string,
+    workflowTitle: string,
     slaHours: number = 48,
   ) {
     return await apiRequest<{ success: boolean; data: any }>(`/items`, {
       method: "POST",
       tenantId,
       userId,
-      body: { title, slaHours },
+      body: { title, slaHours, workflowTitle },
     });
   },
 

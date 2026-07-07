@@ -33,8 +33,6 @@ app.post('/api/items', tenantGuard, createTenantItem);
 app.post('/api/approvals/delegate', tenantGuard, createTenantDelegation);
 app.get('/api/audit-logs/:itemId', tenantGuard, getItemAuditTimeline);
 
-// adminGuard-protected route for workflow configuration changes
-app.post('/api/workflows/configure', tenantGuard, adminGuard, createNewTenantWorkflow);
 
 app.listen(PORT, () => {
   console.log(

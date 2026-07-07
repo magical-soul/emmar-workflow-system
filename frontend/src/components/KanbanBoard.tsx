@@ -1,4 +1,5 @@
 import { type Item } from "../types";
+import { ApprovalStrategyProgress } from "./ApprovalStrategyProgress";
 
 interface KanbanBoardProps {
   items: Item[];
@@ -102,29 +103,7 @@ export function KanbanBoard({
                           {item.title}
                         </h4>
                       </div>
-
-                      {item.currentState === "PENDING_APPROVAL" && (
-                        <div className="mt-2 bg-slate-900/80 border border-slate-700/50 rounded-lg p-2 flex flex-col gap-1 text-[11px]">
-                          <div className="flex flex-col sm:flex-row justify-between text-slate-400 font-semibold gap-1">
-                            <span>Strategy Rule:</span>
-                            <span className="text-amber-500 font-mono font-bold">
-                              MULTIPLE (Unanimous)
-                            </span>
-                          </div>
-
-                          {/* Dynamic Voting Progress Bar Blueprint */}
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="flex-1 bg-slate-800 rounded-full h-1.5 overflow-hidden border border-slate-700">
-                              <div className="bg-emerald-500 h-full transition-all duration-300 w-1/2"></div>{" "}
-                              {/* Simulated Progress Bar */}
-                            </div>
-                            <span className="font-mono font-bold text-slate-300">
-                              1 / 2 Approved
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
+                      <ApprovalStrategyProgress item={item} />
                       {/* CONCURRENCY INDICATOR CAP */}
                       <div className="flex items-center justify-between mt-1 text-[11px] font-semibold text-slate-400">
                         <span className="flex items-center gap-1">
@@ -134,10 +113,9 @@ export function KanbanBoard({
                           </span>
                         </span>
                         <span className="bg-slate-900 border border-slate-700/80 px-2 py-0.5 rounded text-slate-300 font-mono text-[10px]">
-                          v{item.version}
+                          WF-v{item?.workflow?.version}
                         </span>
                       </div>
-
                       {/* DYNAMIC PIPELINE MUTATION CONTROLLER ARROWS */}
                       <div
                         className="mt-2 pt-3 border-t border-slate-700/40 flex flex-col gap-1.5"

@@ -67,7 +67,14 @@ export class ItemRepository {
         take: limit,
         orderBy: { id: "desc" },
         include: {
-          workflow: { select: { title: true, version: true } },
+          workflow: { select: { title: true, version: true, transitions: true } },
+           _count: {
+            select: {
+              requests: {
+                where: { status: 'APPROVED' }
+              }
+            }
+          }
         },
       }),
       prisma.item.count({ where: whereCondition }),
@@ -256,10 +263,11 @@ export class ItemRepository {
     title: string,
     createdBy: string,
     slaHours: number,
+    workflowTitle: string
   ) {
     // Dynamically look up the active workflow configuration for this tenant
     const activeWorkflow = await prisma.workflow.findFirst({
-      where: { tenantId },
+      where: { tenantId , title: workflowTitle, isActive: true },
       orderBy: { version: "desc" },
     });
 

@@ -7,7 +7,7 @@ export async function tenantGuard(req: AuthenticatedRequest, res: Response, next
     // Extract the active tenant workspace header sent from the React UI dashboard
     const tenantId = req.headers['x-tenant-id'] as string;
     
-    // we extract a mock user ID sent from the headers to test permissions locally.
+    // we extract a user ID sent from the headers to test permissions.
     const userId = req.headers['x-user-id'] as string;
 
     if (!tenantId || !userId) {
@@ -30,7 +30,7 @@ export async function tenantGuard(req: AuthenticatedRequest, res: Response, next
       });
     }
 
-    // Mount the clean, verified security context parameters into the request wrapper securely
+    // Mount the clean, verified security context parameters into the request wrapper
     req.tenantContext = {
       userId: membership.userId,
       tenantId: membership.tenantId,

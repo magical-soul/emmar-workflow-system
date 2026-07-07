@@ -1,3 +1,23 @@
+export interface WorkflowTransition {
+  id: string;
+  workflowId: string;
+  tenantId: string;
+  fromStateName: string;
+  toStateName: string;
+  requiresApproval: boolean;
+  approvalStrategy: 'SINGLE' | 'MULTIPLE' | 'QUORUM';
+}
+
+// Represents the administrative blueprint template schema
+export interface WorkflowBlueprint {
+  id: string;
+  tenantId: string;
+  title: string;
+  version: number;
+  isActive: boolean;
+  transitions?: WorkflowTransition[]; // Pre-loaded array mapping
+}
+
 export interface Item {
   id: string;
   tenantId: string;
@@ -7,6 +27,10 @@ export interface Item {
   createdBy: string;
   version: number;
   slaHours: number;
+  workflow?: WorkflowBlueprint; 
+  _count?: {
+    requests: number;
+  };
 }
 
 export interface ApprovalRequest {

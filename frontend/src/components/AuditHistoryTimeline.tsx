@@ -9,7 +9,7 @@ export function AuditHistoryTimeline({ logs, activeItemId }: AuditHistoryTimelin
   if (!activeItemId) {
     return (
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 text-center text-xs text-slate-500 font-medium italic select-none">
-        💡 Select any asset card from the Kanban board grid columns above to review its permanent, immutable audit trail timeline history feed.
+         Select any asset card from the Kanban board grid columns above to review its permanent, immutable audit trail timeline history feed.
       </div>
     );
   }

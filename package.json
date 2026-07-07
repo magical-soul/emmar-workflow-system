@@ -11,6 +11,7 @@
     "infra:down": "docker compose down",
     "infra:logs": "docker compose logs -f",
     "db:migrate": "npm run prisma:migrate --workspace=backend",
+    "db:push": "npm run prisma:push --workspace=backend -- --force-reset",
     "db:seed": "npm run db:seed --workspace=backend",
     "db:studio": "npm run prisma:studio --workspace=backend",
     "dev:backend": "npm run dev --workspace=backend",

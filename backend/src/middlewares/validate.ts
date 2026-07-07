@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { z, ZodType } from 'zod';
 import { AuthenticatedRequest } from '../utils/context';
 
-// 💡 Generic Request Validation Wrapper
+// Generic Request Validation Wrapper
 export const validateBody = (schema: ZodType) => 
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
@@ -16,7 +16,7 @@ export const validateBody = (schema: ZodType) =>
     }
   };
 
-// 📐 Explicit Input Schema Definitions
+// Explicit Input Schema Definitions
 export const createWorkflowSchema = z.object({
   title: z.string().min(3).max(100),
   states: z.array(z.string().min(2)).min(2),

@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "prisma:migrate": "prisma migrate dev --name init_multi_tenant_schema",
+    "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
     "db:seed": "ts-node --project tsconfig.json prisma/seed.ts",
     "test:e2e": "ts-node --project tsconfig.json prisma/test-e2e.ts"

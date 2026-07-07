@@ -40,11 +40,13 @@ export class AdminWorkflowService {
 
       // Do the transition arrows match perfectly?
       const existingTransitions = latestWorkflow.transitions.map(t => 
-        `${t.fromStateName}->${t.toStateName}-${t.requiresApproval}`
+        `${t.fromStateName}->${t.toStateName}-${t.requiresApproval}-${t.approvalStrategy}`
       ).sort();
+
       const incomingTransitions = transitions.map(t => 
-        `${t.from}->${t.to}-${t.requiresApproval}`
+        `${t.from}->${t.to}-${t.requiresApproval}-${t.approvalStrategy || 'SINGLE'}`
       ).sort();
+
       const transitionsMatch = JSON.stringify(existingTransitions) === JSON.stringify(incomingTransitions);
 
       // If both components match perfectly, halt creation gracefully and return the active version!

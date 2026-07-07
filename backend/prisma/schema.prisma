@@ -3,10 +3,10 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
 }
 
-// The Company Workspace
+// The Company Workspace Scope
 model Tenant {
   id          String             @id @default(uuid())
   name        String
@@ -25,6 +25,7 @@ model TenantMembership {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tenantId]) // Enforces exactly ONE role per user inside a single tenant
+  @@index([tenantId])
 }
 
 // The Immutable Workflow Template
@@ -40,17 +41,19 @@ model Workflow {
   items       Item[]
 
   @@unique([tenantId, title, version])
+  @@index([tenantId])
 }
 
-// The Workflow Stages
+// The Workflow Stages (e.g., DRAFT, PENDING_APPROVAL)
 model WorkflowState {
   id         String   @id @default(uuid())
   workflowId String
   tenantId   String
-  name       String   // e.g., 'DRAFT', 'PENDING_APPROVAL', 'APPROVED'
+  name       String   
   workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@unique([workflowId, name])
+  @@index([tenantId])
 }
 
 // The Workflow Linking
@@ -64,9 +67,11 @@ model WorkflowTransition {
   approvalStrategy String            @default("SINGLE") // 'SINGLE' | 'MULTIPLE' | 'QUORUM'
   workflow         Workflow          @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   requests         ApprovalRequest[]
+
+  @@index([workflowId, fromStateName, toStateName])
 }
 
-// The Transactional Business Asset
+// The Transactional Business Asset Document Row
 model Item {
   id           String            @id @default(uuid())
   tenantId     String
@@ -76,12 +81,17 @@ model Item {
   createdBy    String
   version      Int               @default(1)
   slaHours     Int               @default(48)
-  escapedAt    DateTime?         
+  escapedAt    DateTime?
+  updatedAt    DateTime          @updatedAt        
   tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   workflow     Workflow          @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   requests     ApprovalRequest[]
+
+  @@index([tenantId, currentState])
+  @@index([workflowId])
 }
 
+// The Verification Hold Signature Request Ticket Queue
 model ApprovalRequest {
   id                 String             @id @default(uuid())
   itemId             String
@@ -92,15 +102,20 @@ model ApprovalRequest {
   status             String             @default("PENDING") // 'PENDING' | 'APPROVED' | 'REJECTED'
   item               Item               @relation(fields: [itemId], references: [id], onDelete: Cascade)
   transition         WorkflowTransition @relation(fields: [transitionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, assignedApproverId, status]) // Accelerates Personalized Inbox fetching for managers
+  @@index([itemId])                              // Speeds up parent asset resolution lookups
 }
 
-// The Authority Delegation
+// The Time-Bound Authority Delegation Matrix
 model ApprovalDelegations {
   id         String   @id @default(uuid())
   tenantId   String
   fromUserId String
   toUserId   String
   expiresAt  DateTime
+
+  @@index([tenantId, toUserId, expiresAt]) // Eliminates query bottlenecks during delegation handshakes
 }
 
 // The Immutable History logger
@@ -112,4 +127,6 @@ model AuditLog {
   performedBy String
   payload     String  
   createdAt   DateTime @default(now())
+
+  @@index([tenantId, itemId]) // Accelerates timeline rendering at the bottom of the UI
 }
