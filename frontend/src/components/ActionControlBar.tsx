@@ -10,15 +10,17 @@ interface ActionControlBarProps {
   ) => Promise<void>;
 }
 
-// Track the last deployed workflow globally across the component session
-let lastDeployedWorkflow = "Luxury Property Sales Contract"; // Baseline default from seed.ts
-
 export function ActionControlBar({ onCreateItem, onDelegate, onDeployBlueprint }: ActionControlBarProps) {
   const [itemTitle, setItemTitle] = useState('');
   const [delegateTargetId, setDelegateTargetId] = useState('user-bob');
   const [blueprintTitle, setBlueprintTitle] = useState('');
   const [strategyModel, setStrategyModel] = useState<'SINGLE' | 'MULTIPLE' | 'QUORUM'>('SINGLE');
   const [isSubmitting, setIsSubmitting] = useState(false);
+    const [deployedBlueprintsPool, setDeployedBlueprintsPool] = useState<string[]>([
+    "Luxury Property Sales Contract" // Core baseline seeded default
+  ]);
+
+  const [selectedWorkflow, setSelectedWorkflow] = useState("Luxury Property Sales Contract");
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +28,7 @@ export function ActionControlBar({ onCreateItem, onDelegate, onDeployBlueprint }
     setIsSubmitting(true);
     
     // Always pass the true last deployed workflow name stored in memory!
-    await onCreateItem(itemTitle, lastDeployedWorkflow);
+    await onCreateItem(itemTitle, selectedWorkflow);
     
     setItemTitle('');
     setIsSubmitting(false);
@@ -45,11 +47,13 @@ export function ActionControlBar({ onCreateItem, onDelegate, onDeployBlueprint }
       { from: "PENDING_APPROVAL", to: "CONFIRMED", requiresApproval: true, approvalStrategy: strategyModel }
     ];
 
-    // 1. Capture the exact title name into our session variable BEFORE we wipe the input state!
-    lastDeployedWorkflow = blueprintTitle;
-
-    // 2. Dispatch down to backend database streams
+    // Dispatch down to backend database streams
     await onDeployBlueprint(blueprintTitle, customStates, customTransitions);
+      setDeployedBlueprintsPool(prev => {
+      if (prev.includes(blueprintTitle)) return prev;
+      return [...prev, blueprintTitle];
+    });
+    setSelectedWorkflow(blueprintTitle);
 
     // Safe to wipe the input box instantly! No race conditions remain
     setBlueprintTitle('');
@@ -61,7 +65,7 @@ export function ActionControlBar({ onCreateItem, onDelegate, onDeployBlueprint }
       
       {/* SECTION 1: CREATE NEW WORKFLOW ITEM */}
       <form onSubmit={handleCreateSubmit} className="flex flex-wrap items-end gap-4 pb-6 border-b border-slate-800">
-        <div className="flex flex-col gap-1 flex-1 min-w-[240px]">
+        <div className="flex flex-col gap-1 flex-1 min-w-60">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Create New Workflow Item</label>
           <input
             type="text"
@@ -70,6 +74,19 @@ export function ActionControlBar({ onCreateItem, onDelegate, onDeployBlueprint }
             placeholder="e.g., Burj Khalifa Lease Agreement v2"
             className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 font-semibold"
           />
+        </div>
+
+          <div className="flex flex-col gap-1 w-full sm:w-56">
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Target Workflow Template</label>
+          <select
+            value={selectedWorkflow}
+            onChange={(e) => setSelectedWorkflow(e.target.value)}
+            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 font-semibold cursor-pointer"
+          >
+            {deployedBlueprintsPool.map(bp => (
+              <option key={bp} value={bp}>{bp}</option>
+            ))}
+          </select>
         </div>
 
         <button

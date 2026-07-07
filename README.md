@@ -136,3 +136,17 @@ Fire your live dev utilities inside separate terminal panels to boot both halves
 *   **Terminal Tab 1 (Backend Server API):** `npm run dev:backend`
 *   **Terminal Tab 2 (React UI Dashboard):** `npm run dev:frontend`
 
+---
+
+## 🔮 Future Improvements & Known Limitations
+
+To build this app quickly, I focused on making the core features stable and secure. While **Multi-Tenant Security**, **Automated SLA Background Workers**, and **Clean Form Resets** are fully working in the code, here are two simple improvements I would make before launching this for thousands of real-world users:
+
+### 1. Dynamic Signature Requirements
+* **Limitation:** Right now, to show the progress bars for our testing data, the app assumes a fixed number of signatures for each strategy (for example, any `MULTIPLE` strategy expects exactly 2 signatures).
+* **Future Fix:** In a real production system, one tenant might need 3 signatures for a workflow while another needs 5. To fix this, I would add a `requiredSignaturesCount` column to the backend database table. The frontend progress bar could then read that number directly, making signature limits 100% dynamic.
+
+### 2. Real-Time UI Updates without Refreshing
+* **Limitation:** Right now, when the background SLA worker runs and moves an expired card to the "Escalated" column in the database, the user has to manually refresh the browser page to see that visual change happen on screen.
+* **Future Fix:** For a large production app with thousands of users, constantly refreshing or having the browser bombard the server with updates can slow down performance. I would upgrade the app to use **WebSockets (Socket.io)**. This keeps a live connection open between the backend and frontend, sliding cards across the board instantly the exact second a database change happens, without any page refreshes.
+
