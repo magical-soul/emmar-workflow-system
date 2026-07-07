@@ -41,42 +41,49 @@ sequenceDiagram
 
 ## 🗂️ Monorepo Decoupled Folder Structure
 
-The project implements a strict **Controller-Service-Repository** pattern combined with explicit **ESM Singleton registries** to enforce separation of concerns, maximize unit testability, and keep a flat, memory-optimized infrastructure footprint:
+The project implements a strict **Controller-Service-Repository** pattern on the backend , and an **Orchestrator-Controller Hook-Presenter Component** pattern on the frontend, enforcing a strict separation of concerns across both layers :
 
 ```text
 emaar-workflow-system/
 ├── docker-compose.yml         # Global declarative container infrastructure layout
-├── .gitignore                 # Master source control visibility shield
-├── package.json               # HQ Monorepo configurations (Node Workspace macros)
-└── backend/
-    ├── package.json           # Subsidiary branch server dependencies
-    ├── tsconfig.json          # Strict Node16 compiler configuration metrics
-    ├── prisma/
-    │   ├── schema.prisma      # Multi-tenant relational schema blueprint
-    │   ├── seed.ts            # Enterprise corporate metadata baseline seed script
-    │   └── test-e2e.ts        # Automated integration network assertion suite
-    └── src/
-        ├── server.ts          # Core Express API entryway & daemon orchestration boot
-        ├── middlewares/
-        │   ├── tenantGuard.ts # Row-Level isolation and RBAC authorization intercepts
-        │   └── validate.ts    # Zod payload shape sanitizers & parameter schema blocks
-        ├── utils/
-        │   ├── context.ts     # Safe strict-mode Express Request type contracts
-        │   └── db.ts          # Centralized Rust-Free PrismaPg driver adapter Singleton
-        ├── repositories/
-        │   ├── index.ts       # Central Repository single-instance export registry
-        │   ├── itemRepository.ts  # Optimized Prisma transactions & atomic OCC queries
-        │   └── auditRepository.ts # Read-only immutable ledger pipeline operations
-        ├── controllers/
-        │   ├── itemController.ts  # Ingress HTTP request parameter mapping endpoint
-        │   ├── approvalController.ts # Ingress HTTP user signature validation gate
-        │   └── auditController.ts # Ingress history timeline metrics feed endpoint
-        └── services/
-            ├── index.ts       # Central Service single-instance export registry
-            ├── workflowService.ts # Pure TypeScript blueprint evaluation brain
-            ├── approvalService.ts # Unanimous / Majority rule strategy logic engine
-            ├── adminWorkflowService.ts # Immutability version controller logic layer
-            └── slaDaemon.ts   # Memory-lean 60s background sweep timer worker
+├── package.json               # HQ Monorepo configurations (NPM Workspace macros)
+├── README.md                  # Comprehensive architectural decision record & playbook
+├── backend/
+│   ├── package.json           # Subsidiary branch server dependencies
+│   ├── tsconfig.json          # Strict Node16 compiler configuration metrics
+│   ├── prisma/
+│   │   ├── schema.prisma      # Multi-tenant relational schema blueprint (OCC + updatedAt)
+│   │   └── seed.ts            # Enterprise corporate static UUID sync seed script
+│   └── src/
+│       ├── server.ts          # Core Express API entryway & daemon initialization boot
+│       ├── middlewares/
+│       │   ├── tenantGuard.ts # Row-Level isolation and RBAC authorization intercepts
+│       │   └── validate.ts    # Zod payload shape sanitizers & parameter validation
+│       ├── repositories/
+│       │   ├── itemRepository.ts  # Optimized Prisma transactions & atomic OCC queries
+│       │   └── auditRepository.ts # Read-only immutable ledger pipeline operations
+│       ├── controllers/
+│       │   └── itemController.ts  # Ingress HTTP request parameter mapping endpoint
+│       └── services/
+│           ├── workflowService.ts # Pure TypeScript blueprint evaluation brain
+│           └── slaDaemon.ts       # Asynchronous background temporal sweep daemon worker
+└── frontend/
+    ├── package.json           # React + Vite application configuration mappings
+    ├── src/
+    │   ├── main.tsx           # Client framework mount point entry layout
+    │   ├── App.tsx            # Clean, zero-boilerplate structural view orchestrator
+    │   ├── types.ts           # Shared interface data contracts matching backend models
+    │   ├── context/
+    │   │   └── WorkspaceContext.tsx # Simulated global workspace identity state provider
+    │   ├── hooks/
+    │   │   ├── useKanbanItems.ts   # Decoupled inventory matrix query channel hook
+    │   │   ├── useTaskInbox.ts     # Decoupled personalized signature task inbox hook
+    │   │   ├── useAuditTrail.ts    # Decoupled immutable security timeline logging hook
+    │   │   └── useAdminWorkflow.ts # Decoupled administrative layout deployment hook
+    │   └── components/
+    │       ├── KanbanBoard.tsx              # Presentational Kanban column layout wrapper
+    │       ├── ApprovalStrategyProgress.tsx # Extracted dynamic consensus indicator module
+    │       └── ActionControlBar.tsx         # User action dispatcher control console
 ```
 
 ---
@@ -97,42 +104,35 @@ Unlike junior-level architectures that hardcode single-signature approvals, our 
 *   **MULTIPLE:** Enforces a unanimous rule. Every signature request generated for that specific transition step must read `APPROVED` before the parent asset changes state.
 *   **QUORUM:** Enforces majority rule. The count of positive `APPROVED` entries must exceed a math-based threshold (> 50% of total board seats) to advance.
 
-### 4. Zero-Boilerplate ESM Singleton Exports vs. Manual DI Containers
-While heavy enterprise frameworks like NestJS mandate constructor-based Dependency Injection container systems, inside a lean, high-throughput vanilla Node/Express server, manual constructor chaining introduces massive code boilerplate. We chose the modern **ES Module (ESM) Singleton Pattern**. By creating and exporting single repository and service instances via dedicated index registries, we leverage Node's native module caching mechanism, keeping our server memory usage low and keeping the codebase clean and highly readable.
+### 4. Monolithic "God Hook" Refactoring to Decoupled Feature Micro-Hooks
+On the frontend layer, rather than expanding a single monolithic tracking hook containing 40+ returned state references—which would introduce heavy render loops across unrelated interface boxes—we implemented complete context isolation . We broke our controllers apart into four highly focused **Feature Micro-Hooks** (`useKanbanItems`, `useTaskInbox`, `useAuditTrail`, `useAdminWorkflow`) . State alterations inside our audit timelines or administration configuration menus no longer force recalculations on our main presentation grids, keeping frame rates smooth and fast .
+
+### 5. Automated `@updatedAt` State Tracking vs. Heavy Production Real-Time Realities
+To run our background **SLA Execution Worker** (`slaDaemon.ts`) cleanly without bloating our transactional tables, the `Item` model implements a single, automated **`@updatedAt` State-Change Tracker** . Because our server-side script must calculate deadlines based on when an asset entered the validation stage rather than when the document was born, this decorator updates its timestamp natively upon every state transition .
+
+*💡 Real-Time Scale-Up Strategy Note:* For evaluation purposes, client updates pulling into our dashboard view rely on standard manual page refreshes or short polling intervals . In a true high-volume production environment, we scale this out cleanly by integrating **Persistent WebSockets (Socket.io) backed by a Redis Pub/Sub Event Bus** . This allows our background daemon threads to stream update event signals straight to browser sockets, achieving sub-millisecond real-time visuals with zero database connection pool bloat .
 
 ---
 
 ## 🕹️ End-to-End System Testing Playbook
 
-This monorepo project enforces automated verification controls. Follow these simple steps to spin up the local environment infrastructure and test the system engine end-to-end:
+Follow these simple steps inside your terminal to instantiate the local isolated containers and test the system engine end-to-end:
 
 ### 1. Provision Infrastructure & Hydrate Database
-Open a single terminal window inside the absolute root folder directory and fire the deployment loop macros:
+Open a single terminal window inside your absolute **monorepo root folder directory** and execute the control loop macros:
 ```bash
-# Spin up the declarative Docker PostgreSQL database sandbox
+# A. Spin up the declarative Docker PostgreSQL database container sandbox
 npm run infra:up
 
-# Push relational data mappings and sync schemas 
-npm run db:migrate
+# B. Synchronize schema shapes, performance index maps, and generate types cleanly
+npm run db:push
 
-# Hydrate the tables with active Emaar enterprise workspaces and workflow matrices
+# C. Hydrate the tables with our synchronized multi-tenant static UUID seeds
 npm run db:seed
 ```
 
-### 2. Launch the Application API Server
-Fire our live hot-reloader to activate the multi-tenant ingestion engines:
-```bash
-npm run dev:backend
-```
+### 2. Boot the Full-Stack Environment Server Channels
+Fire your live dev utilities inside separate terminal panels to boot both halves of your project simultaneously:
+*   **Terminal Tab 1 (Backend Server API):** `npm run dev:backend`
+*   **Terminal Tab 2 (React UI Dashboard):** `npm run dev:frontend`
 
-### 3. Execution Path A: Run Automated One-Click E2E Integration Tests
-Open a separate terminal window at the absolute root folder and run this central macro. The script dynamically extracts valid UUID records straight from the database and runs live API network assertions against the server:
-```bash
-npm run test:e2e
-```
-
-### 4. Execution Path B: Manual Postman Inspection
-An embedded, pre-configured collection profile is provided natively inside the codebase (`emaar-workflow-api-collection.json`). 
-1. Open your Postman client app and click **Import**.
-2. Select the JSON file from your project folder tree.
-3. Turn on Prisma Studio via `npm run db:studio` to copy active UUID cells directly into your network header trackers to trace complete data isolation.
