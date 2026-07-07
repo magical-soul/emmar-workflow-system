@@ -90,27 +90,27 @@ emaar-workflow-system/
 
 ## 🛠️ Strategic Architectural Decisions & Engineering Trade-offs
 
-### 1. Pure "Rust-Free" Single-Instance Architecture (Prisma 7)
-Prisma 7 completely removes its legacy heavy, binary background engine files to become 100% Rust-free. Because connection parameters can no longer be left to blind background compilation, we implemented a strict **Singleton Database Client Wrapper (`src/utils/db.ts`)**. We manually initialized a native Node.js PostgreSQL connection pool (`pg`) and injected it directly into Prisma via the required `@prisma/adapter-pg` driver module wrapper. This guarantees a highly reliable, flat, low-overhead socket pooling infrastructure.
+### 1. Simple Database Connection Setup (Prisma 7)
+Prisma 7 removes the old, heavy binary engines to become much lighter. Because of this change, we built a dedicated database file (`src/utils/db.ts`) to manage our connections safely. It sets up a standard connection pool using the native Node.js `pg` driver and passes it directly into Prisma. This keeps our database connections clean, stable, and highly efficient.
 
-### 2. Double-Shield Concurrency Controls (OCC + Atomic Writes)
-To achieve complete data correctness under intense multi-user access environments:
-*   **Optimistic Concurrency Control (OCC):** Every database row update on our primary transaction logs evaluates an atomic `version` integer check block (`WHERE id = itemId AND version = currentVersion`). If an overlapping system thread shifts the record version mid-flight, the write fails cleanly.
-*   **Atomic Query Filtering:** To block simultaneous millisecond-level approval race conditions (e.g. multiple managers hitting "Approve" at the exact same fraction of a second), the signature write query itself strictly enforces an active state checkpoint (`WHERE id = requestId AND status = 'PENDING'`). This completely eliminates row corruption and double-processing vulnerabilities at the database level.
+### 2. Preventing Double-Clicks and Data Errors (Concurrency Safety)
+To make sure data never gets corrupted when multiple users are clicking things at the same millisecond, the backend uses two safety measures:
+*   **Version Checking (OCC):** Every asset card has a `version` number. When updated, the database makes sure the version hasn't changed since the user loaded the page. If another user updated it first, the second update fails safely instead of overwriting data.
+*   **Status Constraints:** When a manager approves a task, the code checks that the task status is strictly `PENDING`. If a manager double-clicks the button, the second click is ignored because the task is no longer pending, preventing duplicate processing.
 
-### 3. Advanced Approval Strategy Computing Matrices
-Unlike junior-level architectures that hardcode single-signature approvals, our engine parses abstract workflow blueprint metrics to enforce advanced organizational voting rules dynamically:
-*   **SINGLE:** One signature immediately unlocks the workflow path.
-*   **MULTIPLE:** Enforces a unanimous rule. Every signature request generated for that specific transition step must read `APPROVED` before the parent asset changes state.
-*   **QUORUM:** Enforces majority rule. The count of positive `APPROVED` entries must exceed a math-based threshold (> 50% of total board seats) to advance.
+### 3. Dynamic Approval Rules
+Instead of hardcoding simple single-signature approvals, our engine reads the specific rules deployed by the administrator to enforce voting rules dynamically:
+*   **SINGLE:** Any single manager's approval moves the card forward instantly.
+*   **MULTIPLE:** Every generated signature request for that specific step must be marked as `APPROVED` before the card can move forward.
+*   **QUORUM:** A majority vote (> 50% of the total seats) is required to approve and move the card.
 
-### 4. Monolithic "God Hook" Refactoring to Decoupled Feature Micro-Hooks
-On the frontend layer, rather than expanding a single monolithic tracking hook containing 40+ returned state references—which would introduce heavy render loops across unrelated interface boxes—we implemented complete context isolation . We broke our controllers apart into four highly focused **Feature Micro-Hooks** (`useKanbanItems`, `useTaskInbox`, `useAuditTrail`, `useAdminWorkflow`) . State alterations inside our audit timelines or administration configuration menus no longer force recalculations on our main presentation grids, keeping frame rates smooth and fast .
+### 4. Splitting the Frontend Into Focused Custom Hooks
+Instead of creating one giant, complicated React hook to manage the entire page—which would cause the whole screen to lag and re-render constantly—we split our logic into four small, independent custom hooks (`useKanbanItems`, `useTaskInbox`, `useAuditTrail`, `useAdminWorkflow`). Now, if the history timeline updates at the bottom of the screen, the main Kanban board doesn't have to reload, keeping the app fast and smooth.
 
-### 5. Automated `@updatedAt` State Tracking vs. Heavy Production Real-Time Realities
-To run our background **SLA Execution Worker** (`slaDaemon.ts`) cleanly without bloating our transactional tables, the `Item` model implements a single, automated **`@updatedAt` State-Change Tracker** . Because our server-side script must calculate deadlines based on when an asset entered the validation stage rather than when the document was born, this decorator updates its timestamp natively upon every state transition .
+### 5. Automated Time Tracking for SLA Deadlines
+To run our background **SLA Worker** (`slaDaemon.ts`) cleanly without adding a bunch of extra timestamp columns to our database, we used Prisma’s built-in `@updatedAt` feature on our main table. Because the background worker checks deadlines based on *when an asset entered the pending column* (rather than when the card was created), this column automatically updates its time code every single time a card changes columns.
 
-*💡 Real-Time Scale-Up Strategy Note:* For evaluation purposes, client updates pulling into our dashboard view rely on standard manual page refreshes or short polling intervals . In a true high-volume production environment, we scale this out cleanly by integrating **Persistent WebSockets (Socket.io) backed by a Redis Pub/Sub Event Bus** . This allows our background daemon threads to stream update event signals straight to browser sockets, achieving sub-millisecond real-time visuals with zero database connection pool bloat .
+* Scaling Note for Production:* For this local app, the dashboard relies on a quick manual refresh to fetch fresh data from the database. In a large production app with thousands of real users, I would upgrade this to use **WebSockets (Socket.io)**. This would keep a live connection open between the backend and frontend, sliding cards across columns automatically the exact second a database change happens without any manual page refreshes.
 
 ---
 
