@@ -131,6 +131,16 @@ npm run db:push
 npm run db:seed
 ```
 
+### 🛡️ Local Infrastructure Connection (Alternative Direct Command)
+
+If you prefer to bypass the script and directly run the command locally, use the following:
+
+```bash
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/emaar_workflow?schema=public" npx prisma db push --schema=backend/prisma/schema.prisma --force-reset
+```
+
+This command directly injects the required database URL, eliminating the need to manually configure a local `.env` file.
+
 ### 2. Boot the Full-Stack Environment Server Channels
 Fire your live dev utilities inside separate terminal panels to boot both halves of your project simultaneously:
 *   **Terminal Tab 1 (Backend Server API):** `npm run dev:backend`
