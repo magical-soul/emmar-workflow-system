@@ -11,6 +11,7 @@ interface KanbanBoardProps {
     CONFIRMED: number;
     ESCALATED: number;
   };
+  isLoading: boolean;
   onTriggerTransition: (itemId: string, targetState: string) => void;
 }
 
@@ -48,6 +49,7 @@ export function KanbanBoard({
   selectedItemId,
   onTriggerTransition,
   globalCounts,
+  isLoading
 }: KanbanBoardProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
@@ -60,7 +62,7 @@ export function KanbanBoard({
         return (
           <div
             key={column.key}
-            className="bg-slate-800/60 rounded-xl border border-slate-700/60 p-4 flex flex-col gap-3 min-h-125"
+            className="bg-slate-800/60 rounded-xl border border-slate-700/60 p-4 flex flex-col h-full min-h-[500px]"
           >
             {/* COLUMN HEADER */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-700/50">
@@ -133,9 +135,11 @@ export function KanbanBoard({
                         )}
                         {item.currentState === "PENDING_APPROVAL" && (
                           <button
-                            onClick={() =>
-                              onTriggerTransition(item.id, "CONFIRMED")
-                            }
+                            disabled={isLoading}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await onTriggerTransition(item.id, "CONFIRMED");
+                            }}
                             className="w-full bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-slate-900 border border-amber-500/20 text-xs font-bold py-1.5 px-3 rounded-lg transition duration-200 shadow-sm"
                           >
                             Request Confirmation

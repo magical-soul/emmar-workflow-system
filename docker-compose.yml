@@ -16,21 +16,22 @@ services:
     networks:
       - emaar_network
 
-  # 📡 Backend Express API Service Layer
-  # backend_api:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   container_name: emaar-backend-api
-  #   ports:
-  #     - "8000:8000"
-  #   environment:
-  #     - DATABASE_URL=postgresql://postgres:postgres@postgres_db:5432/emaar_workflow?schema=public
-  #     - PORT=8000
-  #   depends_on:
-  #     - postgres_db
-  #   networks:
-  #     - emaar_network
+  # Backend Express API Service Layer
+  backend_api:
+    profiles: ["production"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: emaar-backend-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres_db:5432/emaar_workflow?schema=public
+      - PORT=8000
+    depends_on:
+      - postgres_db
+    networks:
+      - emaar_network
 
 volumes:
   postgres_data: # Ensures database data persists safely across container restarts!

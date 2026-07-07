@@ -19,16 +19,20 @@ export function useTaskInbox(onMutationSuccess?: () => Promise<void>) {
 
   useEffect(() => {
     loadPendingApprovals();
-  }, [loadPendingApprovals, activeUserId]);
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTenantId, activeUserId]);
 
   const handleApprovalSignature = async (requestId: string, action: 'APPROVED' | 'REJECTED') => {
     try {
       setInboxError(null);
+      setPendingRequests(prev => prev.filter(req => req.id !== requestId));
       await apiService.resolveApproval(activeTenantId, activeUserId, requestId, action);
       await loadPendingApprovals();
       if (onMutationSuccess) await onMutationSuccess();
     } catch (err: any) {
       setInboxError(err.message);
+         // If a database validator or compliance policy rules reject the mutation, reload data to restore the ticket
+      await loadPendingApprovals();
       throw err;
     }
   };

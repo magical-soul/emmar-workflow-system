@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../utils/context';
 import { adminWorkflowService } from '../services/index';
+import { prisma } from '../utils/db';
 
 export async function createNewTenantWorkflow(req: AuthenticatedRequest, res: Response) {
   try {
@@ -26,5 +27,25 @@ export async function createNewTenantWorkflow(req: AuthenticatedRequest, res: Re
   } catch (error: any) {
     console.error('Admin workflow configuration runtime crash:', error.message);
     return res.status(500).json({ error: error.message || 'Failed to initialize tenant workflow structural templates.' });
+  }
+}
+
+export async function getActiveTenantWorkflows(req: AuthenticatedRequest, res: Response) {
+  try {
+    const context = req.tenantContext!;
+
+    // Only pull records belonging to the active tenant!
+    const activeWorkflows = await prisma.workflow.findMany({
+      where: { 
+        tenantId: context.tenantId 
+      },
+      select: {
+        title: true
+      }
+    });
+
+    return res.json({ success: true, data: activeWorkflows });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
   }
 }

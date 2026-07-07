@@ -30,40 +30,62 @@ export class WorkflowService {
       );
     }
 
-    // THE APPROVAL ENGINE INTERCEPTOR
-    if (matchTransition.requiresApproval) {
-      const activeApproverMembership = await prisma.tenantMembership.findFirst({
-        where: {
-          tenantId,
-          role: "APPROVER",
-        },
-      });
+     if (matchTransition.requiresApproval) {
+      // Identify what strategic consensus model is linked to this transition arrow
+      const currentStrategy = matchTransition.approvalStrategy || 'SINGLE';
 
-      if (!activeApproverMembership) {
+      // Fetch the authorized actors registered inside this tenant workspace organization
+      let targetApproversList: string[] = [];
+
+      if (currentStrategy === 'MULTIPLE' || currentStrategy === 'QUORUM') {
+        // Capture ALL members holding APPROVER or ADMIN badges!
+        const workspaceMemberships = await prisma.tenantMembership.findMany({
+          where: {
+            tenantId,
+            role: { in: ['APPROVER', 'ADMIN'] }
+          },
+          select: { userId: true }
+        });
+
+        targetApproversList = workspaceMemberships.map(m => m.userId);
+      } else {
+        // Grab the first available approver seat cleanly
+        const singleApprover = await prisma.tenantMembership.findFirst({
+          where: { tenantId, role: 'APPROVER' },
+          select: { userId: true }
+        });
+        
+        if (singleApprover) {
+          targetApproversList = [singleApprover.userId];
+        }
+      }
+
+      if (targetApproversList.length === 0) {
         throw new Error(
           "System Exception: No qualified approvers registered inside this tenant workspace organization.",
         );
       }
 
-      const targetApproverId = activeApproverMembership.userId;
-
-      // Spawn the pending signature task ticket inside the database table queue
-      await itemRepository.createApprovalRequest(
-        item.id,
-        matchTransition.id,
-        tenantId,
-        targetApproverId,
-      );
+      // Create an independent pending signature ticket row for EACH assigned supervisor!
+      for (const approverId of targetApproversList) {
+        await itemRepository.createApprovalRequest(
+          item.id,
+          matchTransition.id,
+          tenantId,
+          approverId
+        );
+      }
 
       const finalHoldState =
         item.currentState === "DRAFT" ? "PENDING_APPROVAL" : item.currentState;
+        
       await itemRepository.updateStateWithOCC(
         item.id,
         item.version,
         finalHoldState,
       );
 
-      // Log the hold event in the immutable ledger
+      // Log the hold event in the immutable ledger with complete metadata parameters
       await auditRepository.createLog(
         tenantId,
         item.id,
@@ -73,13 +95,14 @@ export class WorkflowService {
           previousState: item.currentState,
           requestedState: requestedState,
           holdState: finalHoldState,
-          requiredApprover: targetApproverId,
+          appliedStrategy: currentStrategy,
+          totalSignaturesRequiredCount: targetApproversList.length,
         },
       );
 
       return {
         status: "PENDING_APPROVAL_HOLD",
-        message: `Action Blocked. Transition to state '${requestedState}' requires an authorized manager signature verification. A ticket has been dispatched to: ${targetApproverId}`,
+        message: `Action Blocked. Transition to state '${requestedState}' requires advanced signature verification. [${targetApproversList.length}] manager tickets dispatched.`,
         itemId: item.id,
         currentState: finalHoldState,
       };

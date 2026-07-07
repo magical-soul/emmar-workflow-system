@@ -121,4 +121,11 @@ export const apiService = {
       },
     );
   },
+
+  async fetchActiveTenantWorkflows(tenantId: string, userId: string) {
+    return await apiRequest<{ data: any[] }>(`/workflows/active`, {
+      tenantId,
+      userId,
+    });
+  },
 };
