@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
+    "build": "npx prisma generate --schema=prisma/schema.prisma && tsc",
     "start": "node dist/server.js",
     "prisma:migrate": "prisma migrate dev --name init_multi_tenant_schema",
     "prisma:push": "prisma db push",
