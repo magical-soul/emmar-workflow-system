@@ -1,0 +1,5 @@
+echo "🔍 Running pre-commit validation gates across workspaces..."
+
+# Execute compilation and lint validation blocks natively
+npm run lint --workspaces --if-present
+npm run build --workspaces --if-present

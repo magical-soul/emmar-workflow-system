@@ -17,6 +17,10 @@
     "dev:backend": "npm run dev --workspace=backend",
     "test:e2e": "npm run test:e2e --workspace=backend",
     "dev:frontend": "npm run dev -w frontend",
-    "build:frontend": "npm run build -w frontend"
+    "build:frontend": "npm run build -w frontend",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }

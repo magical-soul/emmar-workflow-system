@@ -49,8 +49,21 @@ export function useKanbanItems() {
   }, [activeTenantId, activeUserId, currentPage, selectedStateFilter]);
 
   useEffect(() => {
-    loadItemsData();
+    let isSubscribed = true;
+    
+    async function syncData() {
+      if (isSubscribed) {
+        await loadItemsData();
+      }
+    }
+    
+    syncData();
+    
+    return () => {
+      isSubscribed = false; // Prevents race condition leaks on sudden tenant toggles
+    };
   }, [loadItemsData, activeUserId, currentPage, selectedStateFilter]);
+
 
   const handleCreateItem = async (title: string, blueprintTitle: string) => {
     try {

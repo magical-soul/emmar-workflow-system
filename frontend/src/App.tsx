@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { WorkspaceControlBar } from "./components/WorkspaceControlBar";
 import { ActionControlBar } from "./components/ActionControlBar";
 import { TaskSignatureInbox } from "./components/TaskSignatureInbox";

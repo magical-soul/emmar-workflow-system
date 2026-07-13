@@ -18,9 +18,22 @@ export function useTaskInbox(onMutationSuccess?: () => Promise<void>) {
   }, [activeTenantId, activeUserId]);
 
   useEffect(() => {
-    loadPendingApprovals();
+    let isSubscribed = true;
+    
+    async function syncInbox() {
+      if (isSubscribed) {
+        await loadPendingApprovals();
+      }
+    }
+    
+    syncInbox();
+    
+    return () => {
+      isSubscribed = false;
+    };
      // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTenantId, activeUserId]);
+
 
   const handleApprovalSignature = async (requestId: string, action: 'APPROVED' | 'REJECTED') => {
     try {

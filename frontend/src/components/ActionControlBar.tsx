@@ -31,6 +31,9 @@ export function ActionControlBar({
   >("SINGLE");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dbBlueprints, setDbBlueprints] = useState<string[]>([]);
+   const [selectedWorkflow, setSelectedWorkflow] = useState(
+    "Luxury Property Sales Contract",
+  );
 
   useEffect(() => {
     async function syncActiveBlueprints() {
@@ -60,9 +63,7 @@ export function ActionControlBar({
     syncActiveBlueprints();
   }, [activeTenantId]);
 
-  const [selectedWorkflow, setSelectedWorkflow] = useState(
-    "Luxury Property Sales Contract",
-  );
+ 
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
